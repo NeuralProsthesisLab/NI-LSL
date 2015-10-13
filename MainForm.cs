@@ -79,6 +79,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Forms;
 using LSL;
 using NationalInstruments.DAQmx;
@@ -149,13 +150,11 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             if (PhysicalChannelListBox.Items.Count > 0)
                 PhysicalChannelListBox.SelectedIndex = 0;
 
-            ChannelCount = 5; //default
-            InitializeLSL();
         }
 
         public void InitializeLSL()
         {
-            var info = new liblsl.StreamInfo("NiDaq", "emg", ChannelCount, liblsl.IRREGULAR_RATE, liblsl.channel_format_t.cf_float32, "unlock-semg");
+            var info = new liblsl.StreamInfo("NiDaq", "emg", ChannelCount, (double)rateNumeric.Value, liblsl.channel_format_t.cf_double64, "unlock-semg");
             Outlet = new liblsl.StreamOutlet(info);
         }
 
@@ -210,6 +209,9 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                           Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
                     }
 
+                    ChannelCount = PhysicalChannelListBox.CheckedItems.Count;
+                    InitializeLSL();
+
                     // Create a virtual channel
               //      myTask.AIChannels.CreateVoltageChannel(physicalChannelComboBox.Text, "",
            //             (AITerminalConfiguration) (-1), Convert.ToDouble(minimumValueNumeric.Value),
@@ -257,12 +259,18 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                     // Read the available data from the channels
                     data = analogInReader.EndReadWaveform(ar);
                     //multichanneldata ? 
-                    //publish to outlet here? 
-                    foreach (var aw in data)
+                    //publish to outlet here?
+                    var results = data.Select(analogWaveform => analogWaveform.GetScaledData()).ToList();
+                    var arr = new double[results[0].Length,results.Count];
+                    for (int i = 0; i < results.Count; i++)
                     {
-                       Outlet.push_sample(Array.ConvertAll(aw.GetScaledData(), Convert.ToSingle));
-
+                        for (int j = 0; j < results[0].Length; j++)
+                        {
+                            arr[j, i] = results[i][j];
+                        }
                     }
+                    //samples by channel
+                    Outlet.push_chunk(arr);
                     // Plot your data here
                     dataToDataTable(data, ref dataTable);
 
