@@ -78,6 +78,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Windows.Forms;
 using LSL;
 using NationalInstruments.DAQmx;
@@ -90,7 +91,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
     public class MainForm : Form
     {
         public liblsl.StreamOutlet Outlet;
-        public int ChannelCount = 5;
+        public int ChannelCount { get; set; }
 
         private DataGrid acquisitionDataGrid;
         private GroupBox acquisitionResultGroupBox;
@@ -105,8 +106,8 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
 
         private AnalogWaveform<double>[] data;
         private AnalogWaveformCollection<double> multichanneldata; 
-        private DataColumn[] dataColumn = null;
-        private DataTable dataTable = null;
+        private DataColumn[] dataColumn;
+        private DataTable dataTable;
 
         private Label maximumLabel;
         internal NumericUpDown maximumValueNumeric;
@@ -124,6 +125,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
         private NumericUpDown samplesPerChannelNumeric;
         private Button startButton;
         private Button stopButton;
+        private CheckedListBox PhysicalChannelListBox;
         private GroupBox timingParametersGroupBox;
 
         public MainForm()
@@ -143,12 +145,16 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             if (physicalChannelComboBox.Items.Count > 0)
                 physicalChannelComboBox.SelectedIndex = 0;
 
+            PhysicalChannelListBox.Items.AddRange(DaqSystem.Local.GetPhysicalChannels(PhysicalChannelTypes.AI, PhysicalChannelAccess.External));
+            if (PhysicalChannelListBox.Items.Count > 0)
+                PhysicalChannelListBox.SelectedIndex = 0;
+
+            ChannelCount = 5; //default
             InitializeLSL();
         }
 
         public void InitializeLSL()
         {
-            
             var info = new liblsl.StreamInfo("NiDaq", "emg", ChannelCount, liblsl.IRREGULAR_RATE, liblsl.channel_format_t.cf_float32, "unlock-semg");
             Outlet = new liblsl.StreamOutlet(info);
         }
@@ -196,10 +202,18 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                     // Create a new task
                     myTask = new Task();
 
+                    //create virtual channels
+                    foreach (var selectedItem in PhysicalChannelListBox.CheckedItems)
+                    {
+                        myTask.AIChannels.CreateVoltageChannel(selectedItem.ToString(), "",
+                          (AITerminalConfiguration)(-1), Convert.ToDouble(minimumValueNumeric.Value),
+                          Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
+                    }
+
                     // Create a virtual channel
-                    myTask.AIChannels.CreateVoltageChannel(physicalChannelComboBox.Text, "",
-                        (AITerminalConfiguration) (-1), Convert.ToDouble(minimumValueNumeric.Value),
-                        Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
+              //      myTask.AIChannels.CreateVoltageChannel(physicalChannelComboBox.Text, "",
+           //             (AITerminalConfiguration) (-1), Convert.ToDouble(minimumValueNumeric.Value),
+            //            Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
 
                     // Configure the timing parameters
                     myTask.Timing.ConfigureSampleClock("", Convert.ToDouble(rateNumeric.Value),
@@ -328,7 +342,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
         /// </summary>
         private void InitializeComponent()
         {
-            System.Resources.ResourceManager resources = new System.Resources.ResourceManager(typeof (MainForm));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.channelParametersGroupBox = new System.Windows.Forms.GroupBox();
             this.physicalChannelComboBox = new System.Windows.Forms.ComboBox();
             this.minimumValueNumeric = new System.Windows.Forms.NumericUpDown();
@@ -346,18 +360,20 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             this.acquisitionResultGroupBox = new System.Windows.Forms.GroupBox();
             this.resultLabel = new System.Windows.Forms.Label();
             this.acquisitionDataGrid = new System.Windows.Forms.DataGrid();
+            this.PhysicalChannelListBox = new System.Windows.Forms.CheckedListBox();
             this.channelParametersGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize) (this.minimumValueNumeric)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize) (this.maximumValueNumeric)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.minimumValueNumeric)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.maximumValueNumeric)).BeginInit();
             this.timingParametersGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize) (this.rateNumeric)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize) (this.samplesPerChannelNumeric)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.rateNumeric)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.samplesPerChannelNumeric)).BeginInit();
             this.acquisitionResultGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize) (this.acquisitionDataGrid)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.acquisitionDataGrid)).BeginInit();
             this.SuspendLayout();
             // 
             // channelParametersGroupBox
             // 
+            this.channelParametersGroupBox.Controls.Add(this.PhysicalChannelListBox);
             this.channelParametersGroupBox.Controls.Add(this.physicalChannelComboBox);
             this.channelParametersGroupBox.Controls.Add(this.minimumValueNumeric);
             this.channelParametersGroupBox.Controls.Add(this.maximumValueNumeric);
@@ -367,7 +383,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             this.channelParametersGroupBox.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.channelParametersGroupBox.Location = new System.Drawing.Point(8, 8);
             this.channelParametersGroupBox.Name = "channelParametersGroupBox";
-            this.channelParametersGroupBox.Size = new System.Drawing.Size(224, 120);
+            this.channelParametersGroupBox.Size = new System.Drawing.Size(384, 260);
             this.channelParametersGroupBox.TabIndex = 2;
             this.channelParametersGroupBox.TabStop = false;
             this.channelParametersGroupBox.Text = "Channel Parameters";
@@ -383,65 +399,53 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             // minimumValueNumeric
             // 
             this.minimumValueNumeric.DecimalPlaces = 2;
-            this.minimumValueNumeric.Location = new System.Drawing.Point(120, 56);
-            this.minimumValueNumeric.Maximum = new System.Decimal(new int[]
-            {
-                10,
-                0,
-                0,
-                0
-            });
-            this.minimumValueNumeric.Minimum = new System.Decimal(new int[]
-            {
-                10,
-                0,
-                0,
-                -2147483648
-            });
+            this.minimumValueNumeric.Location = new System.Drawing.Point(112, 197);
+            this.minimumValueNumeric.Maximum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            this.minimumValueNumeric.Minimum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            -2147483648});
             this.minimumValueNumeric.Name = "minimumValueNumeric";
             this.minimumValueNumeric.Size = new System.Drawing.Size(96, 20);
             this.minimumValueNumeric.TabIndex = 3;
-            this.minimumValueNumeric.Value = new System.Decimal(new int[]
-            {
-                100,
-                0,
-                0,
-                -2147418112
-            });
+            this.minimumValueNumeric.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            -2147418112});
             // 
             // maximumValueNumeric
             // 
             this.maximumValueNumeric.DecimalPlaces = 2;
-            this.maximumValueNumeric.Location = new System.Drawing.Point(120, 88);
-            this.maximumValueNumeric.Maximum = new System.Decimal(new int[]
-            {
-                10,
-                0,
-                0,
-                0
-            });
-            this.maximumValueNumeric.Minimum = new System.Decimal(new int[]
-            {
-                10,
-                0,
-                0,
-                -2147483648
-            });
+            this.maximumValueNumeric.Location = new System.Drawing.Point(112, 229);
+            this.maximumValueNumeric.Maximum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            0});
+            this.maximumValueNumeric.Minimum = new decimal(new int[] {
+            10,
+            0,
+            0,
+            -2147483648});
             this.maximumValueNumeric.Name = "maximumValueNumeric";
             this.maximumValueNumeric.Size = new System.Drawing.Size(96, 20);
             this.maximumValueNumeric.TabIndex = 5;
-            this.maximumValueNumeric.Value = new System.Decimal(new int[]
-            {
-                100,
-                0,
-                0,
-                65536
-            });
+            this.maximumValueNumeric.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            65536});
             // 
             // maximumLabel
             // 
             this.maximumLabel.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.maximumLabel.Location = new System.Drawing.Point(16, 88);
+            this.maximumLabel.Location = new System.Drawing.Point(8, 229);
             this.maximumLabel.Name = "maximumLabel";
             this.maximumLabel.Size = new System.Drawing.Size(112, 16);
             this.maximumLabel.TabIndex = 4;
@@ -450,7 +454,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             // minimumLabel
             // 
             this.minimumLabel.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.minimumLabel.Location = new System.Drawing.Point(16, 56);
+            this.minimumLabel.Location = new System.Drawing.Point(8, 197);
             this.minimumLabel.Name = "minimumLabel";
             this.minimumLabel.Size = new System.Drawing.Size(104, 15);
             this.minimumLabel.TabIndex = 2;
@@ -472,7 +476,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             this.timingParametersGroupBox.Controls.Add(this.rateLabel);
             this.timingParametersGroupBox.Controls.Add(this.samplesPerChannelNumeric);
             this.timingParametersGroupBox.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.timingParametersGroupBox.Location = new System.Drawing.Point(8, 136);
+            this.timingParametersGroupBox.Location = new System.Drawing.Point(27, 296);
             this.timingParametersGroupBox.Name = "timingParametersGroupBox";
             this.timingParametersGroupBox.Size = new System.Drawing.Size(224, 92);
             this.timingParametersGroupBox.TabIndex = 3;
@@ -483,23 +487,19 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             // 
             this.rateNumeric.DecimalPlaces = 2;
             this.rateNumeric.Location = new System.Drawing.Point(120, 56);
-            this.rateNumeric.Maximum = new System.Decimal(new int[]
-            {
-                100000,
-                0,
-                0,
-                0
-            });
+            this.rateNumeric.Maximum = new decimal(new int[] {
+            100000,
+            0,
+            0,
+            0});
             this.rateNumeric.Name = "rateNumeric";
             this.rateNumeric.Size = new System.Drawing.Size(96, 20);
             this.rateNumeric.TabIndex = 3;
-            this.rateNumeric.Value = new System.Decimal(new int[]
-            {
-                10000,
-                0,
-                0,
-                0
-            });
+            this.rateNumeric.Value = new decimal(new int[] {
+            10000,
+            0,
+            0,
+            0});
             // 
             // samplesLabel
             // 
@@ -522,28 +522,24 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             // samplesPerChannelNumeric
             // 
             this.samplesPerChannelNumeric.Location = new System.Drawing.Point(120, 24);
-            this.samplesPerChannelNumeric.Maximum = new System.Decimal(new int[]
-            {
-                100000,
-                0,
-                0,
-                0
-            });
+            this.samplesPerChannelNumeric.Maximum = new decimal(new int[] {
+            100000,
+            0,
+            0,
+            0});
             this.samplesPerChannelNumeric.Name = "samplesPerChannelNumeric";
             this.samplesPerChannelNumeric.Size = new System.Drawing.Size(96, 20);
             this.samplesPerChannelNumeric.TabIndex = 1;
-            this.samplesPerChannelNumeric.Value = new System.Decimal(new int[]
-            {
-                1000,
-                0,
-                0,
-                0
-            });
+            this.samplesPerChannelNumeric.Value = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
             // 
             // startButton
             // 
             this.startButton.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.startButton.Location = new System.Drawing.Point(24, 240);
+            this.startButton.Location = new System.Drawing.Point(43, 400);
             this.startButton.Name = "startButton";
             this.startButton.Size = new System.Drawing.Size(80, 24);
             this.startButton.TabIndex = 0;
@@ -553,7 +549,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             // stopButton
             // 
             this.stopButton.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.stopButton.Location = new System.Drawing.Point(136, 240);
+            this.stopButton.Location = new System.Drawing.Point(155, 400);
             this.stopButton.Name = "stopButton";
             this.stopButton.Size = new System.Drawing.Size(80, 24);
             this.stopButton.TabIndex = 1;
@@ -565,7 +561,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             this.acquisitionResultGroupBox.Controls.Add(this.resultLabel);
             this.acquisitionResultGroupBox.Controls.Add(this.acquisitionDataGrid);
             this.acquisitionResultGroupBox.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.acquisitionResultGroupBox.Location = new System.Drawing.Point(240, 8);
+            this.acquisitionResultGroupBox.Location = new System.Drawing.Point(614, 12);
             this.acquisitionResultGroupBox.Name = "acquisitionResultGroupBox";
             this.acquisitionResultGroupBox.Size = new System.Drawing.Size(304, 256);
             this.acquisitionResultGroupBox.TabIndex = 4;
@@ -594,30 +590,39 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             this.acquisitionDataGrid.TabIndex = 1;
             this.acquisitionDataGrid.TabStop = false;
             // 
+            // PhysicalChannelListBox
+            // 
+            this.PhysicalChannelListBox.FormattingEnabled = true;
+            this.PhysicalChannelListBox.Location = new System.Drawing.Point(120, 62);
+            this.PhysicalChannelListBox.Name = "PhysicalChannelListBox";
+            this.PhysicalChannelListBox.Size = new System.Drawing.Size(120, 94);
+            this.PhysicalChannelListBox.TabIndex = 6;
+            // 
             // MainForm
             // 
             this.AutoScaleBaseSize = new System.Drawing.Size(5, 13);
-            this.ClientSize = new System.Drawing.Size(554, 272);
+            this.ClientSize = new System.Drawing.Size(956, 534);
             this.Controls.Add(this.acquisitionResultGroupBox);
             this.Controls.Add(this.stopButton);
             this.Controls.Add(this.startButton);
             this.Controls.Add(this.timingParametersGroupBox);
             this.Controls.Add(this.channelParametersGroupBox);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.Icon = ((System.Drawing.Icon) (resources.GetObject("$this.Icon")));
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Continuous Acquisition of Voltage Samples - Internal Clock";
             this.channelParametersGroupBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize) (this.minimumValueNumeric)).EndInit();
-            ((System.ComponentModel.ISupportInitialize) (this.maximumValueNumeric)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.minimumValueNumeric)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.maximumValueNumeric)).EndInit();
             this.timingParametersGroupBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize) (this.rateNumeric)).EndInit();
-            ((System.ComponentModel.ISupportInitialize) (this.samplesPerChannelNumeric)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.rateNumeric)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.samplesPerChannelNumeric)).EndInit();
             this.acquisitionResultGroupBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize) (this.acquisitionDataGrid)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.acquisitionDataGrid)).EndInit();
             this.ResumeLayout(false);
+
         }
 
         #endregion
