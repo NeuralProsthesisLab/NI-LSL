@@ -75,10 +75,8 @@
 ******************************************************************************/
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
 using LSL;
@@ -144,7 +142,6 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
             PhysicalChannelListBox.Items.AddRange(DaqSystem.Local.GetPhysicalChannels(PhysicalChannelTypes.AI, PhysicalChannelAccess.External));
             if (PhysicalChannelListBox.Items.Count > 0)
                 PhysicalChannelListBox.SelectedIndex = 0;
-
         }
 
         public void InitializeLSL()
@@ -196,7 +193,7 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                     // Create a new task
                     myTask = new Task();
 
-                    //create virtual channels
+                    //create a virtual channel for each checked physical channel.
                     foreach (var selectedItem in PhysicalChannelListBox.CheckedItems)
                     {
                         myTask.AIChannels.CreateVoltageChannel(selectedItem.ToString(), "",
@@ -204,20 +201,16 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                           Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
                     }
 
-                    ChannelCount = PhysicalChannelListBox.CheckedItems.Count;
-                    InitializeLSL();
-
-                    // Create a virtual channel
-              //      myTask.AIChannels.CreateVoltageChannel(physicalChannelComboBox.Text, "",
-           //             (AITerminalConfiguration) (-1), Convert.ToDouble(minimumValueNumeric.Value),
-            //            Convert.ToDouble(maximumValueNumeric.Value), AIVoltageUnits.Volts);
-
                     // Configure the timing parameters
                     myTask.Timing.ConfigureSampleClock("", Convert.ToDouble(rateNumeric.Value),
                         SampleClockActiveEdge.Rising, SampleQuantityMode.ContinuousSamples, 1000);
 
                     // Verify the Task
                     myTask.Control(TaskAction.Verify);
+
+                    //wire in LSL
+                    ChannelCount = PhysicalChannelListBox.CheckedItems.Count;
+                    InitializeLSL();
 
                     // Prepare the table for Data
                     InitializeDataTable(myTask.AIChannels, ref dataTable);
@@ -253,9 +246,9 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                 {
                     // Read the available data from the channels
                     data = analogInReader.EndReadWaveform(ar);
-                    //multichanneldata ? 
-                    //publish to outlet here?
-                    var results = data.Select(analogWaveform => analogWaveform.GetScaledData()).ToList();
+                    
+                    //package it into a form LSL likes (samples by channel double[,])
+                    var results = data.Select(analogWaveform => analogWaveform.GetRawData()).ToList();
                     var arr = new double[results[0].Length,results.Count];
                     for (int i = 0; i < results.Count; i++)
                     {
@@ -264,8 +257,9 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
                             arr[j, i] = results[i][j];
                         }
                     }
-                    //samples by channel
+                    //stuff it out.
                     Outlet.push_chunk(arr);
+
                     // Plot your data here
                     dataToDataTable(data, ref dataTable);
 
