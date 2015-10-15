@@ -1,6 +1,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContAcqVoltageSamples_IntClk", "ContAcqVoltageSamples_IntClk.2013.csproj", "{CBAF6154-BF3C-4B0C-BFDC-6B40EC7FBD28}"
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NI-LSL", "NI-LSL.csproj", "{CBAF6154-BF3C-4B0C-BFDC-6B40EC7FBD28}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

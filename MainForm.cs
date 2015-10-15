@@ -79,17 +79,17 @@ using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Windows.Forms;
-using LSL;
+using NationalInstruments;
 using NationalInstruments.DAQmx;
 
-namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
+namespace NILSL
 {
     /// <summary>
     ///     Summary description for MainForm.
     /// </summary>
     public class MainForm : Form
     {
-        public liblsl.StreamOutlet Outlet;
+        public Liblsl.StreamOutlet Outlet;
         public int ChannelCount { get; set; }
 
         private DataGrid acquisitionDataGrid;
@@ -146,8 +146,8 @@ namespace NationalInstruments.Examples.ContAcqVoltageSamples_IntClk
 
         public void InitializeLSL()
         {
-            var info = new liblsl.StreamInfo("NiDaq", "emg", ChannelCount, (double)rateNumeric.Value, liblsl.channel_format_t.cf_double64, "unlock-semg");
-            Outlet = new liblsl.StreamOutlet(info);
+            var info = new Liblsl.StreamInfo("NiDaq", "emg", ChannelCount, (double)rateNumeric.Value, Liblsl.channel_format_t.cf_double64, "unlock-semg");
+            Outlet = new Liblsl.StreamOutlet(info);
         }
 
         /// <summary>
